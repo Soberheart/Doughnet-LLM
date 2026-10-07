@@ -154,3 +154,35 @@ ray/
 *.pkl
 *.pdf
 data/
+# Local data and experiment artifacts
+/data/
+/weights/
+/outputs/
+/records/
+/results/
+/wandb/
+
+# Third-party repositories installed separately
+/net/nvdiffrast/
+/sim/sdftoolbox/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Backups and PBS logs
+*.bak
+*.bak_*
+*.o[0-9]*
+*.e[0-9]*
+
+# Local environment reports
+/level0_environment.txt
+/level0_sha256.txt
+
+# Local credentials
+.env
+.env.*
+!.env.example

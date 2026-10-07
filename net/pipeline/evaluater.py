@@ -91,8 +91,8 @@ class Evaluater(nn.Module):
         for b in range(data['query'].shape[0]):
 
             # = prepare data
-            y_true = data[f'obj_true_part{postfix}'][b]
-            pred_probs = data[f'obj_predicted_part{postfix}'][b]
+            y_true = data[f'obj_true_part{postfix}'][b].clone()
+            pred_probs = data[f'obj_predicted_part{postfix}'][b].detach().clone()
             if len(pred_probs.shape) == 1:
                 pred_probs = pred_probs.reshape(-1, 1)
             if pred_probs.shape[-1] == 1:

@@ -21,7 +21,7 @@ DEBUG = hasattr(sys, 'gettrace') and (sys.gettrace() is not None)
 
 def reduce_tensor(tensor, world_size):
     # for acc kind, get the mean in each gpu
-    rt = tensor.clone()
+    rt = tensor.detach().clone().to(torch.cuda.current_device())
     torch.distributed.all_reduce(rt, op=torch.distributed.ReduceOp.SUM)
     rt /= world_size
     return rt
@@ -124,6 +124,7 @@ class PredictionWorkspace:
         losses_dict, accs_dict = {}, {}
         for data in tqdm(train_dataloader):
             loss, acc, loss_dict, acc_dict, _ = self.forward(model, data)
+            loss_for_backward = loss
             if self.use_ddp:
                 loss = reduce_tensor(loss, int(os.environ['WORLD_SIZE']))
                 acc = reduce_tensor(acc, int(os.environ['WORLD_SIZE']))
@@ -132,7 +133,7 @@ class PredictionWorkspace:
                 for k, v in acc_dict.items():
                     acc_dict[k] = reduce_tensor(v, int(os.environ['WORLD_SIZE']))
                 torch.cuda.synchronize()
-            self.backward(model, optimizer, loss)
+            self.backward(model, optimizer, loss_for_backward)
 
             losses += [float(loss)]
             accs += [float(acc)]
@@ -219,8 +220,15 @@ class PredictionWorkspace:
                     k = '.'.join(k.split('.')[1:])
                 valid_state_dict[k] = v
         else:
-            valid_state_dict = state_dict
-        model.load_state_dict(valid_state_dict, strict=False)
+            valid_state_dict = {
+                k if k.startswith('module.') else f'module.{k}': v
+                for k, v in state_dict.items()
+            }
+        result = model.load_state_dict(valid_state_dict, strict=False)
+        print(f'Checkpoint load: {len(valid_state_dict)} tensors; '
+              f'missing={result.missing_keys}; unexpected={result.unexpected_keys}')
+        if result.unexpected_keys or len(result.missing_keys) >= len(model.state_dict()):
+            raise RuntimeError('Checkpoint was not loaded into the model')
 
     def save(self, model, val_acc, best_acc):
         if not self.is_main_proc:

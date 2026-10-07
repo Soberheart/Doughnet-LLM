@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#PBS -N doughnet_dyn30
+#PBS -l select=1:ngpus=4:ncpus=64:mem=440GB
+#PBS -l walltime=05:00:00
+#PBS -P personal
+#PBS -q normal
+#PBS -j oe
+
+set -euo pipefail
+
+cd /home/users/ntu/mingjie0/projects/doughnet
+source /home/users/ntu/mingjie0/venvs/doughnet/bin/activate
+export WANDB_MODE=offline
+
+AE_CHECKPOINT="outputs/2026-10-01/18-29-03/best.pth"
+RUN_DIR="records/training_dyn"
+LOG="${RUN_DIR}/train_30epoch_${PBS_JOBID}.log"
+
+mkdir -p "$RUN_DIR"
+test -r "$AE_CHECKPOINT"
+nvidia-smi
+
+torchrun --standalone --nproc_per_node=4 net/prediction.py \
+  --config-name dyn \
+  settings.ddp=True \
+  settings.test_only=False \
+  settings.resume=True \
+  settings.resume_path="$AE_CHECKPOINT" \
+  settings.resume_freeze=True \
+  training.epochs=30 \
+  training.bs=12 \
+  2>&1 | tee "$LOG"
