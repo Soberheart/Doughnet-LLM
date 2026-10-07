@@ -1,0 +1,59 @@
+#!/bin/bash
+#PBS -N doughnet_pose_exec
+#PBS -l select=1:ngpus=1:ncpus=8:mem=64GB
+#PBS -l walltime=04:00:00
+#PBS -P personal
+#PBS -q normal
+#PBS -j oe
+
+set -e -o pipefail
+cd "${PBS_O_WORKDIR:?Submit from the doughnet project root}"
+source /home/users/ntu/mingjie0/venvs/doughnet/bin/activate
+export WANDB_MODE=offline
+export PYTHONUNBUFFERED=1
+
+: "${POSE_ARTIFACTS:?Submit with qsub -v POSE_ARTIFACTS=records/.../artifacts scripts/execute_level3_pose_search.pbs}"
+: "${DYN_CHECKPOINT:=outputs/2026-10-04/14-59-24/best.pth}"
+: "${DYN_CONFIG:=outputs/2026-10-04/14-59-24/.hydra/config.yaml}"
+
+POSE_ARTIFACTS=$(realpath "$POSE_ARTIFACTS")
+test -r "$POSE_ARTIFACTS/cem_scene.yaml"
+test -r "$POSE_ARTIFACTS/random_scene.yaml"
+test -r "$DYN_CHECKPOINT"
+test -r "$DYN_CONFIG"
+nvidia-smi
+
+for METHOD in cem random; do
+  BASE="$POSE_ARTIFACTS/${METHOD}_execution/scenes"
+  mkdir -p "$BASE"
+  echo "=== simulating method=$METHOD ==="
+  python -u sim/generate.py \
+    --config-path "$POSE_ARTIFACTS" \
+    --config-name "${METHOD}_scene" \
+    2>&1 | tee "$POSE_ARTIFACTS/${METHOD}_execution/generate.log"
+  test -r "$BASE/0000/log.pkl"
+
+  echo "=== processing method=$METHOD ==="
+  python -u sim/process.py --config-name common \
+    base_dir="$BASE" num_processes=1 num_frames=63 \
+    2>&1 | tee "$POSE_ARTIFACTS/${METHOD}_execution/process.log"
+  test -r "$BASE/data.h5"
+
+  CHECK_DIR=$(mktemp -d "$POSE_ARTIFACTS/${METHOD}_execution/dyn_check_XXXXXX")
+  python -u scripts/check_level3_dyn.py \
+    --scene-dir "$BASE/0000" \
+    --processed "$BASE/data.h5" \
+    --checkpoint "$DYN_CHECKPOINT" \
+    --config "$DYN_CONFIG" \
+    --output "$CHECK_DIR/artifacts" \
+    2>&1 | tee "$CHECK_DIR/run.log"
+
+  AE_DIR=$(mktemp -d "$POSE_ARTIFACTS/${METHOD}_execution/ae_check_XXXXXX")
+  python -u scripts/check_level3_ae.py \
+    --dyn-artifacts "$CHECK_DIR/artifacts" \
+    --output "$AE_DIR/artifacts" \
+    2>&1 | tee "$AE_DIR/run.log"
+  echo "METHOD_COMPLETE method=$METHOD dyn=$CHECK_DIR/artifacts ae=$AE_DIR/artifacts"
+done
+
+echo "POSE_EXECUTION_COMPLETE: $POSE_ARTIFACTS"

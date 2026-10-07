@@ -1,0 +1,83 @@
+diff --git a/sim/generate/builder.py b/sim/generate/builder.py
+index 43b59ec..e3ecd87 100644
+--- a/sim/generate/builder.py
++++ b/sim/generate/builder.py
+@@ -89,6 +89,7 @@ def get_scene(config):
+             upper_bound=config.sim.mpm.upper_bound,
+         ),
+         viewer_options=us.options.ViewerOptions(),
++        enable_visualization=config.render,
+     )
+     
+     # optional: add camera
+diff --git a/sim/mpm/__init__.py b/sim/mpm/__init__.py
+index 9a19bd8..8a25a9b 100644
+--- a/sim/mpm/__init__.py
++++ b/sim/mpm/__init__.py
+@@ -56,7 +56,8 @@ class GEOM_TYPE(USIntEnum):
+ def init(seed=None, allocate_gpu_memory=8, precision='32', debug=False, eps=1e-12, logging_level=None):
+ 
+     # init taichi
+-    ti.init(arch=ti.gpu, device_memory_GB=allocate_gpu_memory, debug=debug)
++    ti.init(arch=ti.cuda, device_memory_GB=allocate_gpu_memory,
++            debug=debug, enable_fallback=False)
+     # atexit.register(us_exit)
+ 
+     # unisim.logger
+diff --git a/sim/mpm/engine/scene.py b/sim/mpm/engine/scene.py
+index 04e656a..c33ef5e 100644
+--- a/sim/mpm/engine/scene.py
++++ b/sim/mpm/engine/scene.py
+@@ -24,6 +24,7 @@ class Scene:
+             mpm_options      = MPMOptions(),
+             viewer_options   = ViewerOptions(),
+             renderer_options = RendererOptions(),
++            enable_visualization = True,
+         ):
+ 
+         self.id            = str(uuid.uuid4())
+@@ -50,10 +51,12 @@ class Scene:
+         self.mats = []
+ 
+         # visualizer
+-        self.visualizer = Visualizer(
+-            viewer_options   = viewer_options,
+-            renderer_options = renderer_options,
+-        )
++        self.visualizer = None
++        if enable_visualization:
++            self.visualizer = Visualizer(
++                viewer_options   = viewer_options,
++                renderer_options = renderer_options,
++            )
+ 
+         # track FPS
+         self.step_ts = []
+@@ -91,6 +94,8 @@ class Scene:
+         up=(0.0, 0.0, 1.0),
+         fov=30,
+     ):
++        if self.visualizer is None:
++            raise RuntimeError('Cameras require enable_visualization=True.')
+         return self.visualizer.add_camera(res, pos, lookat, up, fov)
+ 
+     def build(self):
+@@ -98,7 +103,8 @@ class Scene:
+         self.sim.build()
+ 
+         # visualizer
+-        self.visualizer.build(self)
++        if self.visualizer is not None:
++            self.visualizer.build(self)
+ 
+         # reset state
+         self._reset()
+@@ -148,6 +154,8 @@ class Scene:
+             us.logger.debug(f'Step: {self.t}, Realtime FPS: {1.0 / np.mean(self.step_ts[max(0, min(3, len(self.step_ts) - 3)):]):.2f}')
+ 
+     def get_viewer_image(self):
++        if self.visualizer is None:
++            raise RuntimeError('Viewer images require enable_visualization=True.')
+         return self.visualizer.viewer.get_image()
+ 
+     def __repr__(self):

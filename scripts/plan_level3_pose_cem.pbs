@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N doughnet_pose
+#PBS -l select=1:ngpus=1:ncpus=8:mem=64GB
+#PBS -l walltime=01:00:00
+#PBS -P personal
+#PBS -q normal
+#PBS -j oe
+
+set -e -o pipefail
+cd "${PBS_O_WORKDIR:?Submit from the doughnet project root}"
+source /home/users/ntu/mingjie0/venvs/doughnet/bin/activate
+export WANDB_MODE=offline
+export PYTHONUNBUFFERED=1
+
+DYN_ARTIFACTS="records/level3_pointcloud/sim_check_FhY2DG/dyn_check_ml9xhm/artifacts"
+test -r "$DYN_ARTIFACTS/observations.npz"
+mkdir -p records
+POSE_RUN_DIR=$(mktemp -d records/level3_pose_cem_XXXXXX)
+echo "pose_run_dir=$POSE_RUN_DIR"
+nvidia-smi
+python -u scripts/plan_level3_pose_cem.py \
+  --dyn-artifacts "$DYN_ARTIFACTS" \
+  --output "$POSE_RUN_DIR/artifacts" \
+  --seed 0 --population 64 --elites 8 --iterations 10 --batch-size 4 \
+  2>&1 | tee "$POSE_RUN_DIR/run.log"
+echo "POSE_SEARCH_JOB_FINISHED: $POSE_RUN_DIR/artifacts/summary.json"
