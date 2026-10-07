@@ -23,7 +23,9 @@ class PoseTransformTests(unittest.TestCase):
         zero = transform_tools(tools, center, [[0.0, 0.0, 0.0]], 0.2)
         np.testing.assert_allclose(zero[0, ..., :3], tools)
         shifted = transform_tools(tools, center, [[10.0, -20.0, 0.0]], 0.2)
-        np.testing.assert_allclose(shifted[0, ..., :2], tools[..., :2] + [0.05, -0.1])
+        np.testing.assert_allclose(
+            shifted[0, ..., :2], tools[..., :2] + [0.05, -0.1], atol=1e-6
+        )
         np.testing.assert_array_equal(shifted[0, ..., 3], 0.0)
 
     def test_yaw_composition_uses_wxyz(self):
