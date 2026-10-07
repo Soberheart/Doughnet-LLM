@@ -23,6 +23,15 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED = PROJECT_ROOT / "sim/mpm/assets/meshes/processed"
+
+
+def provenance_path(path):
+    """Keep repository-local provenance portable across Windows and Linux."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
 CORNERS = np.array([
     [0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0],
     [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1],
@@ -150,9 +159,9 @@ def main():
         for a, b, c in faces + 1:
             stream.write(f"f {a} {b} {c}\n")
     metadata = {
-        "source_sdf": str(args.sdf.resolve()),
+        "source_sdf": provenance_path(args.sdf),
         "source_sdf_sha256": hashlib.sha256(raw).hexdigest(),
-        "output_obj": str(args.output.resolve()),
+        "output_obj": provenance_path(args.output),
         "output_obj_sha256": hashlib.sha256(args.output.read_bytes()).hexdigest(),
         "method": "marching_tetrahedra_at_zero_with_inverse_mesh_to_voxels_transform",
         "original_author_obj": False,

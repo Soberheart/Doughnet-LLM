@@ -1,7 +1,7 @@
 {
-  "source_sdf": "C:\\Users\\Admin（无密码）\\Documents\\ChatGPT\\Doughnet+LLM\\Doughnet-LLM\\sim\\mpm\\assets\\meshes\\processed\\board-128.sdf",
+  "source_sdf": "sim/mpm/assets/meshes/processed/board-128.sdf",
   "source_sdf_sha256": "11dafe88308ddd73ef1710269772de0f338926b6a7f5592981ddcd5632e0ef83",
-  "output_obj": "C:\\Users\\Admin（无密码）\\Documents\\ChatGPT\\Doughnet+LLM\\Doughnet-LLM\\sim\\mpm\\assets\\meshes\\processed\\board-board.obj",
+  "output_obj": "sim/mpm/assets/meshes/processed/board-board.obj",
   "output_obj_sha256": "3b450ba3926334799eae09e6a18f38b0577c36d2c9073ad6fedb0458c9d3ebfe",
   "method": "marching_tetrahedra_at_zero_with_inverse_mesh_to_voxels_transform",
   "original_author_obj": false,
