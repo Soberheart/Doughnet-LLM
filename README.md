@@ -1,3 +1,11 @@
+# Doughnet-LLM：DoughNet 复现与目标规划研究
+
+本仓库基于 [官方 DoughNet](https://github.com/dornik/doughnet)，包含 AE/Dyn 复现修复、训练、评估及实验归档脚本。已完成 AE 和 Dyn 的连续 30 epoch 训练与测试；目标点云 CEM 规划（Level 3）和语言约束扩展尚未完成。
+
+安装方法、实验结果、训练测试命令及后续工作见 **[中文复现与工作指南](docs/reproduction.md)**。数据集、checkpoint 和实验日志不随 Git 仓库上传，需要单独准备。
+
+注意：本 fork 未跟踪第三方依赖的 Git 子模块条目，仅运行下方原始的 `git submodule update` 不足以安装依赖，请使用中文指南中的显式克隆方法。以下保留原项目介绍与引用。
+
 ## DoughNet :doughnut: A Visual Predictive Model for Topological Manipulation of Deformable Objects
 
 [Dominik Bauer](https://dominikbauer.io)<sup>1</sup>, [Zhenjia Xu](https://www.zhenjiaxu.com/)<sup>1,2</sup>, [Shuran Song](https://shurans.github.io/)<sup>1,2</sup><br>
