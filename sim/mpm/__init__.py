@@ -56,7 +56,8 @@ class GEOM_TYPE(USIntEnum):
 def init(seed=None, allocate_gpu_memory=8, precision='32', debug=False, eps=1e-12, logging_level=None):
 
     # init taichi
-    ti.init(arch=ti.gpu, device_memory_GB=allocate_gpu_memory, debug=debug)
+    ti.init(arch=ti.cuda, device_memory_GB=allocate_gpu_memory,
+            debug=debug, enable_fallback=False)
     # atexit.register(us_exit)
 
     # unisim.logger

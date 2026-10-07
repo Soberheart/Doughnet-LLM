@@ -89,6 +89,7 @@ def get_scene(config):
             upper_bound=config.sim.mpm.upper_bound,
         ),
         viewer_options=us.options.ViewerOptions(),
+        enable_visualization=config.render,
     )
     
     # optional: add camera

@@ -1,0 +1,24 @@
+{
+  "source_sdf": "/home/users/ntu/mingjie0/projects/doughnet/sim/mpm/assets/meshes/processed/board-128.sdf",
+  "source_sdf_sha256": "11dafe88308ddd73ef1710269772de0f338926b6a7f5592981ddcd5632e0ef83",
+  "output_obj": "/home/users/ntu/mingjie0/projects/doughnet/sim/mpm/assets/meshes/processed/board-board.obj",
+  "output_obj_sha256": "3b450ba3926334799eae09e6a18f38b0577c36d2c9073ad6fedb0458c9d3ebfe",
+  "method": "marching_tetrahedra_at_zero_with_inverse_mesh_to_voxels_transform",
+  "original_author_obj": false,
+  "vertices": 133034,
+  "triangles": 266064,
+  "bounds": [
+    [
+      -0.50073052835649,
+      -0.5007155880729264,
+      -0.12565203977058992
+    ],
+    [
+      0.5007221416745541,
+      0.5007124112988027,
+      0.12565348061034742
+    ]
+  ],
+  "enclosed_volume": 0.2507555930659671,
+  "closed_and_consistently_oriented": true
+}

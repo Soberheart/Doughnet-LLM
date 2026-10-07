@@ -24,6 +24,7 @@ class Scene:
             mpm_options      = MPMOptions(),
             viewer_options   = ViewerOptions(),
             renderer_options = RendererOptions(),
+            enable_visualization = True,
         ):
 
         self.id            = str(uuid.uuid4())
@@ -50,10 +51,12 @@ class Scene:
         self.mats = []
 
         # visualizer
-        self.visualizer = Visualizer(
-            viewer_options   = viewer_options,
-            renderer_options = renderer_options,
-        )
+        self.visualizer = None
+        if enable_visualization:
+            self.visualizer = Visualizer(
+                viewer_options   = viewer_options,
+                renderer_options = renderer_options,
+            )
 
         # track FPS
         self.step_ts = []
@@ -91,6 +94,8 @@ class Scene:
         up=(0.0, 0.0, 1.0),
         fov=30,
     ):
+        if self.visualizer is None:
+            raise RuntimeError('Cameras require enable_visualization=True.')
         return self.visualizer.add_camera(res, pos, lookat, up, fov)
 
     def build(self):
@@ -98,7 +103,8 @@ class Scene:
         self.sim.build()
 
         # visualizer
-        self.visualizer.build(self)
+        if self.visualizer is not None:
+            self.visualizer.build(self)
 
         # reset state
         self._reset()
@@ -148,6 +154,8 @@ class Scene:
             us.logger.debug(f'Step: {self.t}, Realtime FPS: {1.0 / np.mean(self.step_ts[max(0, min(3, len(self.step_ts) - 3)):]):.2f}')
 
     def get_viewer_image(self):
+        if self.visualizer is None:
+            raise RuntimeError('Viewer images require enable_visualization=True.')
         return self.visualizer.viewer.get_image()
 
     def __repr__(self):
