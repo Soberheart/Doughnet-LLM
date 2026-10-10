@@ -21,6 +21,7 @@ nvidia-smi
 python -u scripts/plan_level3_pose_cem.py \
   --dyn-artifacts "$DYN_ARTIFACTS" \
   --output "$POSE_RUN_DIR/artifacts" \
+  --goal-frame 60 \
   --seed 0 --population 64 --elites 8 --iterations 10 --batch-size 4 \
   2>&1 | tee "$POSE_RUN_DIR/run.log"
 echo "POSE_SEARCH_JOB_FINISHED: $POSE_RUN_DIR/artifacts/summary.json"

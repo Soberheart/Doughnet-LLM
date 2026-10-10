@@ -191,6 +191,10 @@ def main():
     parser.add_argument("--population", type=int, default=64)
     parser.add_argument("--elites", type=int, default=8)
     parser.add_argument("--iterations", type=int, default=10)
+    parser.add_argument(
+        "--goal-frame", type=int, default=None,
+        help="Primary planning frame; defaults to the final recorded Dyn rollout frame",
+    )
     args = parser.parse_args()
     started = time.monotonic()
     if args.output.exists():
@@ -222,6 +226,13 @@ def main():
             or not np.all(np.diff(schedule) == metadata["next_frame_offset"])
             or schedule[-1] != metadata["final_evaluated_frame"]):
         raise ValueError("Invalid recorded frame schedule")
+    planning_goal_frame = schedule[-1] if args.goal_frame is None else args.goal_frame
+    if planning_goal_frame != schedule[-1]:
+        raise ValueError(
+            "The primary planning frame must equal the final Dyn rollout frame "
+            f"({schedule[-1]}); candidates are not predicted beyond that frame"
+        )
+    planning_goal_index = frames.index(planning_goal_frame)
     if (cache["observed"].ndim != 3 or cache["observed"].shape[0] != len(frames)
             or cache["observed"].shape[-1] != 4 or cache["z_reference"].ndim != 3
             or cache["z_reference"].shape[0] != len(frames)
@@ -277,14 +288,19 @@ def main():
     del checkpoint
     print(f"Checkpoint load: missing={result.missing_keys}; unexpected={result.unexpected_keys}", flush=True)
     initial = torch.as_tensor(cache["z_reference"][0:1], device=device)
-    goal = torch.as_tensor(cache["z_reference"][-1:], device=device)
+    # Rank candidates against the latent at the final Dyn rollout frame.
+    # The recorded final frame may be later (currently frame 62); it is kept
+    # for auxiliary post-execution evaluation and is not used for planning.
+    goal = torch.as_tensor(
+        cache["z_reference"][planning_goal_index:planning_goal_index + 1],
+        device=device,
+    )
     with torch.no_grad():
-        for index in (0, -1):
-            observation = torch.as_tensor(cache["observed"][index:index+1] if index == 0 else cache["observed"][-1:], device=device)
+        for index, expected in ((0, initial), (planning_goal_index, goal)):
+            observation = torch.as_tensor(cache["observed"][index:index + 1], device=device)
             _, _, encoded = model.reconstruct(observation, None, decode=False)
-            expected = initial if index == 0 else goal
             if not torch.isfinite(encoded).all() or not torch.allclose(encoded, expected, rtol=1e-4, atol=1e-5):
-                raise ValueError("Initial/goal cache does not correspond to this model and observation")
+                raise ValueError("Initial/planning-goal cache does not correspond to this model and observation")
 
     def rollout(parameters):
         tools = torch.as_tensor(transform_tools(tool_sequence, center, parameters, unit_to_meter), device=device)
@@ -370,9 +386,15 @@ def main():
                 "executed": False,
             }
     summary = {
-        "kind": "fixed_tool_pose_cem_search", "goal_frame": int(metadata["goal_frame"]),
+        "kind": "fixed_tool_pose_cem_search",
+        "goal_frame": int(planning_goal_frame),
+        "recorded_final_frame": int(metadata["goal_frame"]),
         "prediction_endpoint_frame": int(schedule[-1]),
-        "prediction_endpoint_gap_seconds": float(cache["simulation_times"][-1] - cache["simulation_times"][frames.index(schedule[-1])]),
+        "auxiliary_evaluation_frame": int(metadata["goal_frame"]),
+        "auxiliary_evaluation_gap_seconds": float(
+            cache["simulation_times"][frames.index(metadata["goal_frame"])]
+            - cache["simulation_times"][planning_goal_index]
+        ),
         "nominal_goal_score": nominal_score, "nominal_latent_max_abs_error": nominal_error,
         "evaluations_per_method": results["evaluations_per_method"],
         "shared_initial_evaluations": results["shared_initial_evaluations"],
@@ -393,8 +415,11 @@ def main():
         "fixed_tool": OmegaConf.to_container(scene_cfg.ee, resolve=True),
         "fixed_action_template": OmegaConf.to_container(scene_cfg.actions.grasp, resolve=True),
         "unit_to_meter": unit_to_meter, "prediction_frames": schedule,
-        "goal_information": "Only the final rendered goal observation latent is used for scoring; no intermediate object references or future object geometry enter candidate scores",
-        "limitations": "One demonstration-derived fixed tool/closing template; nominal pose is a reference for offsets. No tool category/closing-width search, collision rejection, executed-result evaluation, original-planner equivalence, or success-rate estimate. Initial/minimum std and cosine aggregation are declared implementation choices, not verified author settings. End state is frame 60 while goal is frame 62.",
+        "planning_goal_frame": int(planning_goal_frame),
+        "recorded_final_frame": int(metadata["goal_frame"]),
+        "auxiliary_evaluation_frame": int(metadata["goal_frame"]),
+        "goal_information": "Only the latent at the final Dyn rollout frame is used for primary scoring; the recorded final observation frame is auxiliary only, and no intermediate object references or future object geometry enter candidate scores",
+        "limitations": "One demonstration-derived fixed tool/closing template; nominal pose is a reference for offsets. No tool category/closing-width search, collision rejection, executed-result evaluation, original-planner equivalence, or success-rate estimate. Initial/minimum std and cosine aggregation are declared implementation choices, not verified author settings. Planning is aligned to the final Dyn rollout frame; the recorded final frame is auxiliary only.",
         "nominal_check_evaluations": 2, "selected_action_export_evaluations": 2,
         "environment": {"python": sys.version, "numpy": np.__version__, "torch": torch.__version__,
                         "cuda": torch.version.cuda, "gpu": torch.cuda.get_device_name(device)},

@@ -94,7 +94,10 @@ def main():
     parser.add_argument("--target-ae-artifacts", type=Path, required=True)
     parser.add_argument("--candidate-ae-artifacts", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--frame", type=int, default=62)
+    parser.add_argument(
+        "--frame", type=int, default=60,
+        help="Primary comparison frame; use --frame 62 only for the auxiliary final-frame report",
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise FileExistsError(f"Output already exists: {args.output}")
